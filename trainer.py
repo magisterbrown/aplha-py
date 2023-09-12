@@ -13,6 +13,9 @@ def feedback(q: Queue, resps: Tuple[Connection]):
         while len(batch)<batch_size and not q.empty():
             batch.append(q.get())
         process = torch.stack([el.field for el in batch])
+        
+        # TODO: RUN nn
+
         for waiter in batch:
             print(resps)
             print(waiter.player)

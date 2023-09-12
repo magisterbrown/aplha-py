@@ -14,12 +14,16 @@ def play(i: int, pipe: Tuple[Connection], submit: Queue):
 class Analyze:
     player: int
     field: torch.Tensor
+    my_fig: int
+    enemy_fig: int
 
 
 def play_record(idx: int, pipe: Connection, submit: Queue):
     #submit.put(torch.tensor(3))
     for i in range(3):
         time.sleep(0.1)
+
+        #Playgame
         submit.put(Analyze(idx, torch.tensor([3])))
         resp = pipe.recv()
         
