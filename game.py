@@ -4,6 +4,10 @@ from kaggle_environments.utils import Struct, structify
 from kaggle_environments.envs.connectx.connectx import play, is_win
 from mcts import TreeNode, find_best_playout
 import numpy as np
+import scipy
+
+def visits_to_probs(probs: List[int], temp: float=1e-3) -> NDArray[float]:
+    return scipy.special.softmax(1.0/temp * np.log(np.array(probs) + 1e-10))
 
 def playout(board: List[int], 
         conf: Struct,

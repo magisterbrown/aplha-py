@@ -2,15 +2,17 @@ import torch.nn as nn
 import torch
 from torchvision.models.resnet import BasicBlock
 from numpy.typing import NDArray
-from config import COLS, ROWS
+from config import COLS, ROWS, DTYPE
 import torch.nn.functional as F
+import numpy as np
 
 def alpha_loss(output, target):
         crocs_entorpy = F.cross_entropy(output[0],target[0])
         mse = F.mse_loss(output[1],target[1])
         return crocs_entorpy+mse
 
-def field_to_tenor(field: NDArray[int], my_fig: int, enemy_fig: int) -> torch.Tensor:
+def field_to_tensor(field: NDArray[int], my_fig: int, enemy_fig: int) -> torch.Tensor:
+    serialize_in=DTYPE
     positions = np.reshape(field, (ROWS, COLS))
     return torch.stack([
             torch.tensor(positions==my_fig, dtype=serialize_in),
@@ -19,8 +21,10 @@ def field_to_tenor(field: NDArray[int], my_fig: int, enemy_fig: int) -> torch.Te
 
 
 class ConnNet(nn.Module):
-    def __init__(self,  cols: int, rows: int):
+    def __init__(self):
         super().__init__()
+        cols=COLS
+        rows=ROWS
         inside = 128
 
   
