@@ -1,0 +1,3 @@
+ROWS=3
+COLS=4
+INAROW=3

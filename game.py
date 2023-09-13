@@ -2,7 +2,8 @@ from typing import List, Callable, Tuple
 from numpy.typing import NDArray
 from kaggle_environments.utils import Struct, structify
 from kaggle_environments.envs.connectx.connectx import play, is_win
-from mcts import TreeNode
+from mcts import TreeNode, find_best_playout
+import numpy as np
 
 def playout(board: List[int], 
         conf: Struct,
