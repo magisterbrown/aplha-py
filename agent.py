@@ -54,7 +54,8 @@ def play_record(idx: int, pipe: Connection, submit: Queue, reporter: Reporter):
         step = int(np.random.choice(valid_moves, p=visit_probs))
         env.step([step]*2)
         root = root.children[step]
-    #values = ([1,-1]*len(probs))[-len(probs)-1::-1]
+    #TODO: use this
+    #values = ([-1,1]*(1+len(probs)//2))[-len(probs):]
     values = list()
     for played in players:
         if env.state[0]['reward']==0:
