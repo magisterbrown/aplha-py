@@ -2,6 +2,8 @@ import torch
 import random
 from multiprocessing.context import SpawnContext
 from multiprocessing import shared_memory
+from collections import OrderedDict
+from typing import Tuple
 from typing import List
 from config import ROWS, COLS, DTYPE
 
@@ -36,4 +38,19 @@ class Reporter:
         self.full.wait()
         return tuple(map(torch.clone, (self.fields, self.probs, self.values)))
 
+class SharedWeights:
+    def __init__(self, manager):
+        self.weights = manager.dict()
+        self.version = manager.Value('i', 0)
+        self.lock = manager.Lock()
+    
+    def save_weights(self, up_weights: OrderedDict):
+        with self.lock:
+            for k,v in up_weights.items():
+                self.weights[k] = torch.clone(v)
+            self.version.value+=1
+
+    def get_weights(self) -> Tuple[dict, int] :
+        with self.lock:
+            return self.weights.copy(), self.version.value
 

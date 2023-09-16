@@ -30,7 +30,8 @@ def play_record(idx: int, pipe: Connection, submit: Queue, reporter: Reporter):
     figures = [1,2]
     def pipe_prediction(field: NDArray[int], leaf: TreeNode) -> Tuple[NDArray[float], float]:
         submit.put(Analyze(idx, field_to_tensor(field,figures[leaf.player],figures[not leaf.player])))
-        return pipe.recv()
+        revced = pipe.recv()
+        return  revced
     config = structify({'rows':ROWS,'columns': COLS,'inarow':INAROW})
     env = make("connectx", debug=False, configuration=config)
     root = TreeNode()
@@ -62,7 +63,7 @@ def play_record(idx: int, pipe: Connection, submit: Queue, reporter: Reporter):
             values.append(0)
         else:
             values.append(-1 if played==root.player else 1)
-    assert values==values_sh, 'Problem in short notation'
+    assert values==values_sh, f'Problem in short notation: {values_sh} normal {values}'
     reporter.insert(fields, probs, values)
 
 
