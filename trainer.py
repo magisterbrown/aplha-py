@@ -30,6 +30,11 @@ def feedback(q: Queue, resps: Tuple[Connection], sharew: SharedWeights):
         for (policy, value), info in zip(zip(*results),batch):
             resps[info.player].send((policy.numpy(), value.numpy()))
 
+def set_learning_rate(optimizer, lr):
+    """Sets the learning rate to the given value"""
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+
 def train(reporter: Reporter, sharew: SharedWeights):
     model = ConnNet()
     model.train()
@@ -40,6 +45,7 @@ def train(reporter: Reporter, sharew: SharedWeights):
         kl=KL_TARG
         for i in range(EPOCHS):
             optimizer.zero_grad()
+            set_learning_rate(optimizer, LR*lr_mult)
             pred_probs, pred_values = model(fields.to(DEVICE))
             loss = F.cross_entropy(pred_probs, probs.to(DEVICE))+F.mse_loss(pred_values, values.to(DEVICE))
             loss.backward()
