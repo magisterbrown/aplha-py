@@ -7,6 +7,7 @@ DTYPE=torch.float32
 
 #Model
 LR=2e-3
-TRAIN_BATCH=256
-EPOCHS=3
+TRAIN_BATCH=32
+EPOCHS=5
+KL_TARG=0.02
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
