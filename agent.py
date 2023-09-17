@@ -25,7 +25,6 @@ class Analyze:
     player: int
     field: torch.Tensor
 
-
 def play_record(idx: int, pipe: Connection, submit: Queue, reporter: Reporter):
     figures = [1,2]
     def pipe_prediction(field: NDArray[int], leaf: TreeNode) -> Tuple[NDArray[float], float]:
@@ -37,7 +36,6 @@ def play_record(idx: int, pipe: Connection, submit: Queue, reporter: Reporter):
     root = TreeNode()
     fields = list()
     probs = list()
-    players= list()
     while not env.done:
         board = env.state[0]['observation']['board']
         for i in range(200):
@@ -49,21 +47,10 @@ def play_record(idx: int, pipe: Connection, submit: Queue, reporter: Reporter):
         #    # TODO: submit visits as probailities not as counts
         probs.append(tensor_probs)
         fields.append(field_to_tensor(np.array(board), figures[root.player], figures[not root.player]))
-        players.append(root.player)
 
         visit_probs = visit_probs*(1-RAND)+np.random.dirichlet(np.ones(visit_probs.shape),size=1)[0]*RAND
         step = int(np.random.choice(valid_moves, p=visit_probs))
         env.step([step]*2)
         root = root.children[step]
-    #TODO: use this
-    values_sh = ([-1,1]*(1+len(probs)//2))[-len(probs):] if env.state[0]['reward'] != 0 else [0]*len(probs)
-    values = list()
-    for played in players:
-        if env.state[0]['reward']==0:
-            values.append(0)
-        else:
-            values.append(-1 if played==root.player else 1)
-    assert values==values_sh, f'Problem in short notation: {values_sh} normal {values}'
+    values = ([-1,1]*(1+len(probs)//2))[-len(probs):] if env.state[0]['reward'] != 0 else [0]*len(probs)
     reporter.insert(fields, probs, values)
-
-
