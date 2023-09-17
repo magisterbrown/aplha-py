@@ -1,5 +1,7 @@
 import torch
 import random
+import scipy
+import numpy as np
 from multiprocessing.context import SpawnContext
 from multiprocessing import shared_memory
 from collections import OrderedDict
@@ -10,6 +12,7 @@ from config import ROWS, COLS, DTYPE
 class Reporter:
     def __init__(self, context: SpawnContext, batch_size: int):
         self.lock=context.Lock()
+        self.reads=context.Array('i', [0]*batch_size)
         self.fields=torch.empty(batch_size, 2, ROWS, COLS).share_memory_()
         self.probs=torch.empty(batch_size, COLS).share_memory_()
         self.values=torch.empty(batch_size, 1).share_memory_()
@@ -18,25 +21,29 @@ class Reporter:
 
     def insert(self, fields: List[torch.Tensor], probs: List[torch.Tensor], values: List[int]):
         for field, prob, value in zip(fields, probs, values):
-            self.lock.acquire()
-            if self.filled.value < self.fields.shape[0]:
-                self.fields[self.filled.value] = field
-                self.probs[self.filled.value] = prob 
-                self.values[self.filled.value] = value
-                self.filled.value+=1 
-                if self.filled.value>=self.fields.shape[0]:
-                    self.full.set()
-            else:
-                #TODO: use probailities to replace older
-                replace = random.randint(0, self.filled.value-1)
-                self.fields[replace] = field
-                self.probs[replace] = prob 
-                self.values[replace] = value
-            self.lock.release()
+            with self.lock:
+                if self.filled.value < self.fields.shape[0]:
+                    self.fields[self.filled.value] = field
+                    self.probs[self.filled.value] = prob 
+                    self.values[self.filled.value] = value
+                    self.filled.value+=1 
+                    print(f'Loading {self.filled.value}/{self.fields.shape[0]}')
+                    if self.filled.value>=self.fields.shape[0]:
+                        self.full.set()
+                else:
+                    probs = scipy.special.softmax(np.frombuffer(self.reads.get_obj(), dtype=np.int32))
+                    replace = np.random.choice(np.arange(len(probs)),p=probs)
+                    #replace = random.randint(0, self.filled.value-1)
+                    self.fields[replace] = field
+                    self.probs[replace] = prob 
+                    self.values[replace] = value
+                    self.reads[replace] = 0
 
     def read(self) -> torch.Tensor:
         self.full.wait()
-        return tuple(map(torch.clone, (self.fields, self.probs, self.values)))
+        with self.lock:
+            self.reads[:] = [x+1 for x in self.reads]
+            return tuple(map(torch.clone, (self.fields, self.probs, self.values)))
 
 class SharedWeights:
     def __init__(self, manager):

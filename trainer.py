@@ -1,11 +1,13 @@
 from multiprocessing.queues import Queue
 from multiprocessing.connection import Connection
-from typing import Tuple
+from typing import Tuple, List
 from model import ConnNet
 from reporter import Reporter, SharedWeights
 from config import LR, EPOCHS, DEVICE, KL_TARG
+from torch.utils.tensorboard import SummaryWriter
 import torch
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
 import time
 
 
@@ -36,10 +38,18 @@ def set_learning_rate(optimizer, lr):
         param_group['lr'] = lr
 
 def train(reporter: Reporter, sharew: SharedWeights):
+    writer = SummaryWriter(log_dir='board_logs')
+    fig, ax = plt.subplots()
+    def report_reads(reads: List[int], step: int):
+        ax.clear()
+        ax.bar(range(len(reads)), reads)
+        writer.add_figure('Training/age of samples', fig, global_step=step)
+
     model = ConnNet()
     model.train()
-    optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=1e-4)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=1e-4)
     lr_mult = 1
+    step=0
     while True:
         fields, probs, values = reporter.read()
         kl=KL_TARG
@@ -61,5 +71,13 @@ def train(reporter: Reporter, sharew: SharedWeights):
         kl = ten_num(kl)
         lr_mult *= 0.66 if kl>KL_TARG*2 else 1.5 if kl<KL_TARG/2 else 1
         lr_mult = max(min(lr_mult, 10), 0.1)
-        sharew.save_weights(model.state_dict())
-        
+        writer.add_scalar('Training/Loss',ten_num(loss), step)
+        writer.add_scalar('Training/Learning Rate',LR*lr_mult, step)
+        writer.add_scalar('Training/KL divergence',kl, step)
+        writer.add_scalar('Training/Percent of draws',ten_num((values==0).sum())/values.shape[0], step)
+        if step%50==0:
+            report_reads(reporter.reads[:], step)
+            writer.flush()
+        if step%5==0:
+            sharew.save_weights(model.state_dict())
+        step+=1 

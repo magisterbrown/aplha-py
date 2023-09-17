@@ -2,3 +2,4 @@
 **/venv
 **/*.ipynb
 trash/
+board_logs/
