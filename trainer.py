@@ -78,6 +78,7 @@ def train(reporter: Reporter, sharew: SharedWeights):
         if step%50==0:
             report_reads(reporter.reads[:], step)
             writer.flush()
+            torch.save(model.state_dict(), 'points/last.pth')
         if step%5==0:
             sharew.save_weights(model.state_dict())
         step+=1 

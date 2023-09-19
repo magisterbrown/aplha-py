@@ -44,7 +44,6 @@ def play_record(idx: int, pipe: Connection, submit: Queue, reporter: Reporter):
         valid_moves = list(root.children.keys())
         tensor_probs = torch.zeros(config.columns)
         tensor_probs[valid_moves] = torch.from_numpy(visit_probs).to(DTYPE)
-        #    # TODO: submit visits as probailities not as counts
         probs.append(tensor_probs)
         fields.append(field_to_tensor(np.array(board), figures[root.player], figures[not root.player]))
 
