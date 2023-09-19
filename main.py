@@ -7,7 +7,7 @@ from config import TRAIN_BATCH
 
 smp = get_context('spawn')
 train_fields = Reporter(smp, TRAIN_BATCH)
-agents = 8
+agents = 1
 resps, waits = list(zip(*[Pipe() for p in range(agents)]))
 if __name__ == '__main__':
     manager = smp.Manager()

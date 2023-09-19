@@ -27,8 +27,8 @@ class ConnNet(nn.Module):
         rows=ROWS
         inside = 128
 
-  
-        self.l1 = nn.Conv2d(2,inside,3,padding=1)
+        self.first_move = nn.Embedding(2, cols*rows) 
+        self.l1 = nn.Conv2d(3,inside,3,padding=1)
         self.bn = nn.BatchNorm2d(inside)
         res_blocks = [BasicBlock(inside, inside) for i in range(5)]
         self.body = nn.Sequential(*res_blocks)
@@ -66,7 +66,8 @@ class ConnNet(nn.Module):
 
         return x
 
-    def forward(self, x):
+    def forward(self, player, x):
+        x = torch.concat([self.first_move(player).reshape(-1,1,ROWS,COLS), x],dim=1)
         x = self.l1(x)
         x = self.bn(x)
         x = F.leaky_relu(x,0.01)

@@ -13,6 +13,7 @@ import time
 
 
 ten_num = lambda x:x.cpu().detach().item()
+batch_inputs = lambda batch, attr: torch.stack([getattr(el, attr) for el in batch]).to(DEVICE)
 batch_size = 16
 
 def feedback(q: Queue, resps: Tuple[Connection], sharew: SharedWeights):
@@ -29,7 +30,7 @@ def feedback(q: Queue, resps: Tuple[Connection], sharew: SharedWeights):
             model.to(DEVICE)
         with torch.no_grad():
             model.eval()
-            results=model(torch.stack([el.field for el in batch]).to(DEVICE))
+            results=model(batch_inputs(batch, "first_move"), batch_inputs(batch, "field"))
         for (policy, value), info in zip(zip(*results),batch):
             resps[info.player].send((policy.cpu().numpy(), value.cpu().numpy()))
 

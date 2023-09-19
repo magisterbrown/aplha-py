@@ -23,12 +23,13 @@ def play(i: int, pipe: Tuple[Connection], submit: Queue, reporter: Reporter):
 @dataclass
 class Analyze:
     player: int
+    first_move: torch.Tensor
     field: torch.Tensor
 
 def play_record(idx: int, pipe: Connection, submit: Queue, reporter: Reporter):
     figures = [1,2]
     def pipe_prediction(field: NDArray[int], leaf: TreeNode) -> Tuple[NDArray[float], float]:
-        submit.put(Analyze(idx, field_to_tensor(field,figures[leaf.player],figures[not leaf.player])))
+        submit.put(Analyze(idx, torch.tensor([not leaf.player], dtype=torch.int), field_to_tensor(field,figures[leaf.player],figures[not leaf.player])))
         revced = pipe.recv()
         return  revced
     config = structify({'rows':ROWS,'columns': COLS,'inarow':INAROW})
