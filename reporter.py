@@ -54,7 +54,7 @@ class SharedWeights:
     def save_weights(self, up_weights: OrderedDict):
         with self.lock:
             for k,v in up_weights.items():
-                self.weights[k] = torch.clone(v)
+                self.weights[k] = torch.clone(v).cpu()
             self.version.value+=1
 
     def get_weights(self) -> Tuple[dict, int] :

@@ -17,20 +17,21 @@ batch_size = 16
 
 def feedback(q: Queue, resps: Tuple[Connection], sharew: SharedWeights):
     model = ConnNet()
+    model.to(DEVICE)
     weights_version = 0
     while True:
         batch = [q.get()]
         while len(batch)<batch_size and not q.empty():
             batch.append(q.get())
-        #import madbg; madbg.set_trace()
         if weights_version < sharew.version.value:
             weights, weights_version = sharew.get_weights()
             model.load_state_dict(weights)
+            model.to(DEVICE)
         with torch.no_grad():
             model.eval()
-            results=model(torch.stack([el.field for el in batch]))
+            results=model(torch.stack([el.field for el in batch]).to(DEVICE))
         for (policy, value), info in zip(zip(*results),batch):
-            resps[info.player].send((policy.numpy(), value.numpy()))
+            resps[info.player].send((policy.cpu().numpy(), value.cpu().numpy()))
 
 def set_learning_rate(optimizer, lr):
     """Sets the learning rate to the given value"""
@@ -46,6 +47,7 @@ def train(reporter: Reporter, sharew: SharedWeights):
         writer.add_figure('Training/age of samples', fig, global_step=step)
 
     model = ConnNet()
+    model.to(DEVICE)
     model.train()
     optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=1e-4)
     lr_mult = 1
