@@ -54,13 +54,15 @@ def train(reporter: Reporter, sharew: SharedWeights):
     lr_mult = 1
     step=0
     while True:
-        fields, probs, values = reporter.read()
+        first_moves, fields, probs, values = reporter.read()
         kl=KL_TARG
         for i in range(EPOCHS):
             optimizer.zero_grad()
             set_learning_rate(optimizer, LR*lr_mult)
-            pred_probs, pred_values = model(fields.to(DEVICE))
-            loss = F.cross_entropy(pred_probs, probs.to(DEVICE))+F.mse_loss(pred_values, values.to(DEVICE))
+            pred_probs, pred_values = model(first_moves.to(DEVICE), fields.to(DEVICE))
+            cross = F.cross_entropy(pred_probs, probs.to(DEVICE))
+            mse = F.mse_loss(pred_values, values.to(DEVICE))
+            loss = cross+mse
             loss.backward()
             optimizer.step()
             try:
@@ -74,7 +76,7 @@ def train(reporter: Reporter, sharew: SharedWeights):
         kl = ten_num(kl)
         lr_mult *= 0.66 if kl>KL_TARG*2 else 1.5 if kl<KL_TARG/2 else 1
         lr_mult = max(min(lr_mult, 10), 0.1)
-        writer.add_scalar('Training/Loss',ten_num(loss), step)
+        writer.add_scalars('Training/Loss',{'loss':ten_num(loss), 'cross_entropy': ten_num(cross), 'mse': ten_num(mse)}, step)
         writer.add_scalar('Training/Learning Rate',LR*lr_mult, step)
         writer.add_scalar('Training/KL divergence',kl, step)
         writer.add_scalar('Training/Percent of draws',ten_num((values==0).sum())/values.shape[0], step)

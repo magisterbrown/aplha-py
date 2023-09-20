@@ -12,38 +12,38 @@ from config import ROWS, COLS, DTYPE
 class Reporter:
     def __init__(self, context: SpawnContext, batch_size: int):
         self.lock=context.Lock()
+        self.batch_size=batch_size
         self.reads=context.Array('i', [0]*batch_size)
-        self.fields=torch.empty(batch_size, 2, ROWS, COLS).share_memory_()
-        self.probs=torch.empty(batch_size, COLS).share_memory_()
-        self.values=torch.empty(batch_size, 1).share_memory_()
+        fmoves=torch.empty(batch_size,1,dtype=torch.int).share_memory_()
+        fields=torch.empty(batch_size, 2, ROWS, COLS).share_memory_()
+        probs=torch.empty(batch_size, COLS).share_memory_()
+        values=torch.empty(batch_size, 1).share_memory_()
+        self.shared_tensors = (fmoves, fields, probs, values)
         self.filled = context.Value('i', 0)
         self.full = context.Event()
 
-    def insert(self, fields: List[torch.Tensor], probs: List[torch.Tensor], values: List[int]):
-        for field, prob, value in zip(fields, probs, values):
+    def insert(self, first_moves: List[bool], fields: List[torch.Tensor], probs: List[torch.Tensor], values: List[int]):
+        for reported_tensors in zip(first_moves, fields, probs, values):
             with self.lock:
-                if self.filled.value < self.fields.shape[0]:
-                    self.fields[self.filled.value] = field
-                    self.probs[self.filled.value] = prob 
-                    self.values[self.filled.value] = value
+                if self.filled.value < self.batch_size:
+                    for shared, reported in zip(self.shared_tensors, reported_tensors):
+                        shared[self.filled.value] = reported
                     self.filled.value+=1 
-                    print(f'Loading {self.filled.value}/{self.fields.shape[0]}')
-                    if self.filled.value>=self.fields.shape[0]:
+                    print(f'Loading {self.filled.value}/{self.batch_size}')
+                    if self.filled.value>=self.batch_size:
                         self.full.set()
                 else:
                     probs = scipy.special.softmax(np.frombuffer(self.reads.get_obj(), dtype=np.int32))
                     replace = np.random.choice(np.arange(len(probs)),p=probs)
-                    #replace = random.randint(0, self.filled.value-1)
-                    self.fields[replace] = field
-                    self.probs[replace] = prob 
-                    self.values[replace] = value
+                    for shared, reported in zip(self.shared_tensors, reported_tensors):
+                        shared[replace] = reported
                     self.reads[replace] = 0
 
     def read(self) -> torch.Tensor:
         self.full.wait()
         with self.lock:
             self.reads[:] = [x+1 for x in self.reads]
-            return tuple(map(torch.clone, (self.fields, self.probs, self.values)))
+            return tuple(map(torch.clone, self.shared_tensors))
 
 class SharedWeights:
     def __init__(self, manager):

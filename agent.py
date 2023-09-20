@@ -53,4 +53,5 @@ def play_record(idx: int, pipe: Connection, submit: Queue, reporter: Reporter):
         env.step([step]*2)
         root = root.children[step]
     values = ([-1,1]*(1+len(probs)//2))[-len(probs):] if env.state[0]['reward'] != 0 else [0]*len(probs)
-    reporter.insert(fields, probs, values)
+    first_move = [i%2==0 for i in range(len(probs))]
+    reporter.insert(first_move, fields, probs, values)
